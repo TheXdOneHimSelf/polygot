@@ -1,4 +1,4 @@
-name: Download Winning Games
+name: Download Endogenetic-Bot
 
 on:
   workflow_dispatch:      # run by hand whenever you need
