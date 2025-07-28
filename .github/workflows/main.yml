@@ -23,6 +23,7 @@ jobs:
             -G \
             --data-urlencode "since=${{ steps.time.outputs.since }}" \
             -d "perfType=bullet,blitz,rapid,classical" \
+            -d "result=draw" \
             -H "Accept: application/x-chess-pgn" \
             -o Endogenetic-Bot.pgn
 
