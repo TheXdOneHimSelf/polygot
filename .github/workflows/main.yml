@@ -24,7 +24,7 @@ jobs:
             --data-urlencode "since=${{ steps.time.outputs.since }}" \
             -d "perfType=bullet,blitz,rapid,classical" \
             -H "Accept: application/x-chess-pgn" \
-            -o winning_games.pgn
+            -o Endogenetic-Bot.pgn
 
       - name: Upload PGN file as artifact
         uses: actions/upload-artifact@v4
