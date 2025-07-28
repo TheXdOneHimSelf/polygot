@@ -1,0 +1,25 @@
+name: Combine PGN Files
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '**/*.pgn'
+      - '.github/workflows/combine-pgn.yml'
+
+jobs:
+  combine-pgns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Combine all PGN files
+        run: |
+          find . -type f -iname "*.pgn" -print0 | sort -z | xargs -0 cat > combined.pgn || echo "No PGN files found"
+
+      - name: Upload combined PGN
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-pgn
+          path: combined.pgn
