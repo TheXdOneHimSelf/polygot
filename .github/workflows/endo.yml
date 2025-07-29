@@ -27,6 +27,11 @@ jobs:
             -H "Accept: application/x-chess-pgn" \
             -o Endogenetic-Bot.pgn
 
+      - name: Set up Git user for GitHub Actions bot
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Commit and push Endogenetic-Bot.pgn to repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
