@@ -1,4 +1,4 @@
-name: ♟️ Combine, Strictly Validate PGN, and Build Book ✅
+name: ♟️ Combine, Strictly Validate PGN, and Build Book 
 
 on:
   workflow_dispatch:
