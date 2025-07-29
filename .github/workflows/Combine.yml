@@ -1,4 +1,4 @@
-name: Combine and Validate PGN Files
+name: ♟️ Combine and Validate PGN Files ✅
 
 on:
   workflow_dispatch:
@@ -8,32 +8,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
+      - name: 📥 Check out repository
         uses: actions/checkout@v4
 
-      - name: Install pgn-extract (PGN validator)
+      - name: 🧰 Install pgn-extract (PGN validator)
         run: |
           sudo apt-get update
           sudo apt-get install -y pgn-extract
 
-      - name: Combine all PGN files into one (excluding all.pgn)
+      - name: 📚 Combine all PGN files into one (excluding all.pgn)
         run: |
           find . -maxdepth 1 -type f -name "*.pgn" ! -name "all.pgn" -exec cat {} + > all.pgn
 
-      - name: Validate combined PGN and overwrite all.pgn
+      - name: 🧐 Strictly validate all.pgn and remove ALL illegal games
         run: |
-          pgn-extract -Wuci -s all.pgn -o all.tmp.pgn
-          mv all.tmp.pgn all.pgn
+          # Remove games with illegal moves and overwrite all.pgn
+          pgn-extract -Wuci -s all.pgn -o all.valid.pgn
+          mv all.valid.pgn all.pgn
 
-      - name: Set up Git user for GitHub Actions bot
+      - name: ♟️ (Optional) Create Polyglot Book from all.pgn
+        run: |
+          sudo apt-get install -y polyglot
+          polyglot make-book -pgn all.pgn -bin win.bin -min-game 1
+
+      - name: 🤖 Set up Git user for GitHub Actions bot
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit and push all.pgn to repository
+      - name: 🚀 Commit and push all.pgn to repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add all.pgn
-          git diff --cached --quiet all.pgn || git commit -m "Combine and validate PGN files to all.pgn"
+          git diff --cached --quiet all.pgn || git commit -m "♟️ Combine and strictly validate PGN files to all.pgn"
           git push
