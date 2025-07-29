@@ -1,32 +1,29 @@
-name: Make Opening Book           # Workflow title in the Actions tab
+name: Make Opening Book
 
 on:
-  workflow_dispatch:                    # Manual trigger (“Run workflow”)
+  workflow_dispatch:
 
 jobs:
   make-black-book:
-    runs-on: ubuntu-latest              # Free Ubuntu runner for each execution
+    runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Pull the repo so we have blacker.pgn
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2️⃣ Install the Polyglot utility
     - name: Install Polyglot
       run: |
         sudo apt-get update
         sudo apt-get install -y polyglot
-    # 3️⃣ Build the opening book
+
     - name: Build .bin from .pgn
       run: |
-        # -pgn  → input PGN (loss-free Black games)
-        # -bin  → output Polyglot book
-        # -min-game 1 keeps every move that occurred at least once
         polyglot make-book -pgn combined.pgn -bin win.bin -min-game 1
-    # 4️⃣ Upload the resulting book so you can download it
-    - name: Upload .bin
-      uses: actions/upload-artifact@v4
-      with:
-        name: PolyBook               # Artifact name shown in the UI
-        path: win.bin                # File to upload
+
+    - name: Commit and push win.bin to repository
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git add win.bin
+        git diff --cached --quiet win.bin || git commit -m "Update win.bin book from workflow"
+        git push
