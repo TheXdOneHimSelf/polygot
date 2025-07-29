@@ -1,7 +1,7 @@
 name: Download Endogenetic-Bot
 
 on:
-  workflow_dispatch:      # run by hand whenever you need
+  workflow_dispatch:
 
 jobs:
   download-wins:
@@ -27,8 +27,10 @@ jobs:
             -H "Accept: application/x-chess-pgn" \
             -o Endogenetic-Bot.pgn
 
-      - name: Upload PGN file as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Endogenetic-Bot_games_pgn
-          path: Endogenetic-Bot.pgn
+      - name: Commit and push Endogenetic-Bot.pgn to repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add Endogenetic-Bot.pgn
+          git diff --cached --quiet Endogenetic-Bot.pgn || git commit -m "Update Endogenetic-Bot.pgn from workflow"
+          git push
