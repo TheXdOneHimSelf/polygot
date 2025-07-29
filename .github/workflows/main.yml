@@ -18,7 +18,7 @@ jobs:
 
       - name: Build .bin from .pgn
         run: |
-          polyglot make-book -pgn combined.pgn -bin win.bin -min-game 1
+          polyglot make-book -pgn all.pgn -bin win.bin -min-game 1
 
       - name: Set up Git user for GitHub Actions bot
         run: |
