@@ -12,12 +12,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Combine all PGN files into one
-        run: cat *.pgn > combined.pgn
+        run: cat *.pgn > all.pgn
+
+      - name: Set up Git user for GitHub Actions bot
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Commit and push all.pgn to repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git add combined.pgn
+          git add all.pgn
           git diff --cached --quiet all.pgn || git commit -m "Combine all PGN files into all.pgn"
           git push
