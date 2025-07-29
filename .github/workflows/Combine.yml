@@ -16,9 +16,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y pgn-extract polyglot
 
-      - name: 📚 Combine all PGN files (excluding all.pgn)
+      - name: 📚 Combine all PGN files (excluding all.pgn) using a shell loop
         run: |
-          find . -maxdepth 1 -type f -name "*.pgn" ! -name "all.pgn" -exec cat {} + > all.pgn
+          > all.pgn
+          for f in *.pgn; do
+            [ "$f" = "all.pgn" ] && continue
+            cat "$f" >> all.pgn
+          done
 
       - name: 🦾 Strict PGN validation (removes illegal moves AND broken games)
         run: |
