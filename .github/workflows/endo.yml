@@ -1,4 +1,4 @@
-name: Download Endogenetic-Bot
+name: Download 
 
 on:
   workflow_dispatch:
@@ -19,23 +19,23 @@ jobs:
 
       - name: Download
         run: |
-          curl -L "https://lichess.org/api/games/user/Endogenetic-Bot" \
+          curl -L "https://lichess.org/api/games/user/Classic_BOT-v2" \
             -G \
             --data-urlencode "since=${{ steps.time.outputs.since }}" \
             -d "perfType=bullet,blitz,rapid,classical" \
             -d "result=draw" \
             -H "Accept: application/x-chess-pgn" \
-            -o Endogenetic-Bot.pgn
+            -o Classic_BOT-v2.pgn
 
       - name: Set up Git user for GitHub Actions bot
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit and push Endogenetic-Bot.pgn to repository
+      - name: Commit and push .pgn to repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git add Endogenetic-Bot.pgn
-          git diff --cached --quiet Endogenetic-Bot.pgn || git commit -m "Update Endogenetic-Bot.pgn from workflow"
+          git add Classic_BOT-v2.pgn
+          git diff --cached --quiet Classic_BOT-v2.pgn || git commit -m "Add files via upload"
           git push
