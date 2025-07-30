@@ -1,4 +1,4 @@
-name: Download Exogenetic-Bot
+name: Download 
 
 on:
   workflow_dispatch:
@@ -19,23 +19,23 @@ jobs:
 
       - name: Download
         run: |
-          curl -L "https://lichess.org/api/games/user/Exogenetic-Bot" \
+          curl -L "https://lichess.org/api/games/user/BOT_Stockfish13" \
             -G \
             --data-urlencode "since=${{ steps.time.outputs.since }}" \
             -d "perfType=bullet,blitz,rapid,classical" \
             -d "result=draw" \
             -H "Accept: application/x-chess-pgn" \
-            -o Exogenetic-Bot.pgn
+            -o BOT_Stockfish13.pgn
 
       - name: Set up Git user for GitHub Actions bot
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit and push Exogenetic-Bot.pgn to repository
+      - name: Commit and push .pgn to repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git add Exogenetic-Bot.pgn
+          git add BOT_Stockfish13.pgn
           git diff --cached --quiet Exogenetic-Bot.pgn || git commit -m "Update Exogenetic-Bot.pgn from workflow"
           git push
