@@ -1,0 +1,22 @@
+name: Merge
+
+on:
+  workflow_dispatch:  
+
+jobs:
+  convert:
+    runs-on: windows-latest  
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Merge 
+      shell: cmd
+      run: merge.bat
+
+    - name: Upload PGN files
+      uses: actions/upload-artifact@v4
+      with:
+        name: Book
+        path: WinForUs.bin
