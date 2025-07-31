@@ -41,7 +41,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FILE="${{ github.event.inputs.bot_name }}.pgn"
+
+          # If file doesn't exist yet, add it
+          if [ ! -f "$FILE" ]; then
+            echo "Created new PGN file for ${{ github.event.inputs.bot_name }}" > "$FILE"
+          fi
+
           git add "$FILE"
           git commit -m "Update PGN file for ${{ github.event.inputs.bot_name }}" || echo "No changes to commit"
           git push
-
