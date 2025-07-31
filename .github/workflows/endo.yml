@@ -27,7 +27,6 @@ jobs:
           curl -L "https://lichess.org/api/games/user/${{ github.event.inputs.bot_name }}" \
             -G \
             --data-urlencode "since=${{ steps.time.outputs.since }}" \
-            -d "result=draw" \
             -H "Accept: application/x-chess-pgn" \
             -o Nothing.pgn
 
