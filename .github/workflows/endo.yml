@@ -6,7 +6,7 @@ on:
       bot_name:
         description: "Enter the Lichess bot username"
         required: true
-        default: "Classic_BOT-v2"
+        default: "indianguyplayz"
 
 jobs:
   download-wins:
@@ -35,10 +35,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.bot_name }}
-          path: "${{ github.event.inputs.bot_name }}.pgn"
+          path: "Nothing.pgn"
 
-      - name: Upload PGN 
-        uses: actions/upload-artifact@v4
-        with:
-          name: Classic_BOT-v2
-          path: Classic_BOT-v2.pgn
