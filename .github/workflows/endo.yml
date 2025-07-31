@@ -22,16 +22,26 @@ jobs:
           SINCE=$(date -d "2025-03-01 00:00:00 UTC" +%s)000
           echo "since=$SINCE" >> "$GITHUB_OUTPUT"
 
-      - name: Download
+      - name: Download PGN
         run: |
+          FILE="${{ github.event.inputs.bot_name }}.pgn"
           curl -L "https://lichess.org/api/games/user/${{ github.event.inputs.bot_name }}" \
             -G \
             --data-urlencode "since=${{ steps.time.outputs.since }}" \
             -H "Accept: application/x-chess-pgn" \
-            -o Nothing.pgn
+            -o "$FILE"
 
-      - name: Upload PGN 
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.inputs.bot_name }}
-          path: Nothing.pgn
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push PGN file
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILE="${{ github.event.inputs.bot_name }}.pgn"
+          git add "$FILE"
+          git commit -m "Update PGN file for ${{ github.event.inputs.bot_name }}" || echo "No changes to commit"
+          git push
+
