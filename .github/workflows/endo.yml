@@ -27,15 +27,8 @@ jobs:
             -H "Accept: application/x-chess-pgn" \
             -o Classic_BOT-v2.pgn
 
-      - name: Set up Git user for GitHub Actions bot
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit and push .pgn to repository
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git add Classic_BOT-v2.pgn
-          git diff --cached --quiet Classic_BOT-v2.pgn || git commit -m "Add files via upload"
-          git push
+      - name: Upload PGN 
+        uses: actions/upload-artifact@v4
+        with:
+          name: Classic_BOT-v2
+          path: Classic_BOT-v2.pgn
