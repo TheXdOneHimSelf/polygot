@@ -29,7 +29,7 @@ jobs:
             --data-urlencode "since=${{ steps.time.outputs.since }}" \
             -d "result=draw" \
             -H "Accept: application/x-chess-pgn" \
-            -o "${{ github.event.inputs.bot_name }}.pgn"
+            -o ${{ github.event.inputs.bot_name }}.pgn
 
       - name: Upload PGN 
         uses: actions/upload-artifact@v4
