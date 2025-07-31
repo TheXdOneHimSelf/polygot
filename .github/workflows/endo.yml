@@ -1,7 +1,12 @@
-name: Download 
+name: Download
 
 on:
   workflow_dispatch:
+    inputs:
+      bot_name:
+        description: "Enter the Lichess bot username"
+        required: true
+        default: "Classic_BOT-v2"
 
 jobs:
   download-wins:
@@ -14,18 +19,23 @@ jobs:
       - name: Calculate “since” timestamp (1 Mar 2025 00:00 UTC)
         id: time
         run: |
-          SINCE=$(date -d "2025-03-01T00:00:00Z" +%s)000
+          SINCE=$(date -d "2025-03-01 00:00:00 UTC" +%s)000
           echo "since=$SINCE" >> "$GITHUB_OUTPUT"
 
       - name: Download
         run: |
-          curl -L "https://lichess.org/api/games/user/Classic_BOT-v2" \
+          curl -L "https://lichess.org/api/games/user/${{ github.event.inputs.bot_name }}" \
             -G \
             --data-urlencode "since=${{ steps.time.outputs.since }}" \
-            -d "perfType=bullet,blitz,rapid,classical" \
             -d "result=draw" \
             -H "Accept: application/x-chess-pgn" \
-            -o Classic_BOT-v2.pgn
+            -o "${{ github.event.inputs.bot_name }}.pgn"
+
+      - name: Upload PGN 
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.bot_name }}
+          path: "${{ github.event.inputs.bot_name }}.pgn"
 
       - name: Upload PGN 
         uses: actions/upload-artifact@v4
