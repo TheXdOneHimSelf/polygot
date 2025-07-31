@@ -1,2 +1,2 @@
-polyglot.exe merge-book -in1 D.bin -in2 SF.bin -out win.bin
+polyglot.exe merge-book -in1 .bin -in2 .bin -out WinForUs.bin
 PAUSE
