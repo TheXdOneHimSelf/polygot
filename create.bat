@@ -1,2 +1,2 @@
-polyglot.exe make-book -pgn BOT_Stockfish13.pgn -bin SF.bin -min-game 1
+polyglot.exe make-book -pgn bot.pgn -bin SF.bin -min-game 1
 PAUSE
