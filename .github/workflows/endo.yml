@@ -35,5 +35,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.bot_name }}
-          path: "Nothing.pgn"
-
+          path: Nothing.pgn
