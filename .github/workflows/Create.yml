@@ -3,10 +3,6 @@ name: Create
 on:
   workflow_dispatch:
     inputs:
-      pgn_name:
-        description: "Enter the PGN file name"
-        required: true
-        default: "output"
       bin_name:
         description: "Enter the BIN book name"
         required: true
@@ -29,5 +25,4 @@ jobs:
       with:
         name: Book
         path: |
-          ${{ github.event.inputs.pgn_name }}.pgn
           ${{ github.event.inputs.bin_name }}.bin
