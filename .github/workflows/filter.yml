@@ -1,4 +1,4 @@
-name: Fast Filter PGN by NimsiluBot Wins/Draws (Clean Games)
+name: Fast Filter PGN by NimsiluBot Wins/Draws (Legal Games)
 
 on:
   workflow_dispatch:
@@ -19,59 +19,68 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install pgn-extract
+      - name: Install latest pgn-extract
         run: |
           sudo apt-get update
-          sudo apt-get install -y pgn-extract
+          sudo apt-get install -y build-essential wget unzip
+          wget https://www.cs.kent.ac.uk/people/staff/djb/pgn-extract/pgn-extract-21-10.zip -O pgn.zip
+          unzip pgn.zip
+          cd pgn-extract-21-10/src
+          make
+          sudo cp pgn-extract /usr/local/bin/
+          cd ../..
 
-      - name: Filter PGN for NimsiluBot (Wins/Draws & Legal Moves)
+      - name: Filter PGN for NimsiluBot (Legal Games Only)
         run: |
           INPUT="${{ github.event.inputs.input_pgn }}"
           PLAYER="${{ github.event.inputs.player_name }}"
           OUTPUT="FilteredGames.pgn"
-          TEMP="temp_filtered.pgn"
 
           if [ ! -f "$INPUT" ]; then
             echo "❌ File not found: $INPUT"
             exit 1
           fi
 
-          echo "⚡ Filtering games for $PLAYER (removing illegal moves) using pgn-extract..."
+          echo "⚡ Filtering valid games for $PLAYER (wins/draws only)..."
 
-          # Step 1: Extract games where NimsiluBot was White
-          pgn-extract "$INPUT" \
-            -t "White=$PLAYER" \
+          # Create tagfiles for White and Black filters
+          echo "White=$PLAYER" > white_tags.txt
+          echo "Black=$PLAYER" > black_tags.txt
+
+          # Extract White games, validate moves
+          /usr/local/bin/pgn-extract "$INPUT" \
+            -t white_tags.txt \
             -V \
             -o temp_white.pgn \
-            --quiet
+            --quiet || true
 
-          # Step 2: Extract games where NimsiluBot was Black
-          pgn-extract "$INPUT" \
-            -t "Black=$PLAYER" \
+          # Extract Black games, validate moves
+          /usr/local/bin/pgn-extract "$INPUT" \
+            -t black_tags.txt \
             -V \
             -o temp_black.pgn \
-            --quiet
+            --quiet || true
 
-          # Merge White+Black games
-          cat temp_white.pgn temp_black.pgn > "$TEMP"
+          # Merge White and Black games
+          cat temp_white.pgn temp_black.pgn > temp_all.pgn
 
-          # Step 3: Keep only wins or draws and validate again
-          pgn-extract "$TEMP" \
+          # Filter for wins/draws only
+          /usr/local/bin/pgn-extract temp_all.pgn \
             -r "1-0" \
             -r "0-1" \
             -r "1/2-1/2" \
             -V \
             -o "$OUTPUT" \
-            --quiet
+            --quiet || true
 
           if [ -s "$OUTPUT" ]; then
-            echo "✅ Filter complete. Saved cleaned results to $OUTPUT"
+            echo "✅ Successfully saved cleaned filtered PGN to $OUTPUT"
           else
-            echo "⚠️ No valid games found for $PLAYER"
+            echo "⚠️ No valid wins/draws found for $PLAYER"
             touch "$OUTPUT"
           fi
 
-          rm -f temp_white.pgn temp_black.pgn "$TEMP"
+          rm -f temp_white.pgn temp_black.pgn temp_all.pgn white_tags.txt black_tags.txt
 
       - name: Commit and Push Filtered PGN
         env:
@@ -79,6 +88,7 @@ jobs:
         run: |
           if [ -f "FilteredGames.pgn" ]; then
             git add "FilteredGames.pgn"
-            git commit -m "Filtered PGN: Wins/Draws for NimsiluBot (Cleaned illegal moves)" || echo "No changes to commit"
+            git commit -m "Filtered PGN: Wins/Draws for NimsiluBot (Clean & Legal)" || echo "No changes to commit"
             git push
+
 
