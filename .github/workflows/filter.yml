@@ -1,4 +1,4 @@
-name: Filter PGN by Player Wins/Draws
+name: filter 
 
 on:
   workflow_dispatch:
