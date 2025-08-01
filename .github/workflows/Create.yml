@@ -10,7 +10,7 @@ on:
       bin_name:
         description: "Enter the BIN output file name"
         required: true
-        default: "Some.pgn"
+        default: "Some.bin"
 
 jobs:
   convert:
