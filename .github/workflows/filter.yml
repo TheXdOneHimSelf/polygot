@@ -1,4 +1,4 @@
-name: Filter PGN by NimsiluBot Wins/Draws (No Python)
+name: Fast Filter PGN by NimsiluBot Wins/Draws
 
 on:
   workflow_dispatch:
@@ -19,7 +19,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Filter PGN for NimsiluBot
+      - name: Install pgn-extract (for fast PGN processing)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pgn-extract
+
+      - name: Filter PGN for NimsiluBot (Wins/Draws Only)
         run: |
           INPUT="${{ github.event.inputs.input_pgn }}"
           PLAYER="${{ github.event.inputs.player_name }}"
@@ -30,63 +35,27 @@ jobs:
             exit 1
           fi
 
-          echo "🔎 Filtering games for player: $PLAYER (wins/draws only)"
+          echo "⚡ Using pgn-extract to filter games for $PLAYER..."
 
-          # Split PGN into separate files per game
-          csplit -s -z "$INPUT" '/^\[Event/' '{*}' || true
+          # Keep only games where NimsiluBot played AND result is win or draw
+          pgn-extract "$INPUT" \
+            --player "$PLAYER" \
+            --result "1-0" --result "0-1" --result "1/2-1/2" \
+            --out "$OUTPUT" \
+            --quiet
 
-          MATCHED=0
-
-          for FILE in xx*; do
-            # Check if NimsiluBot played in the game
-            if ! grep -qiE "\[White \".*${PLAYER}.*\"|\[Black \".*${PLAYER}.*\"" "$FILE"; then
-              rm "$FILE"
-              continue
-            fi
-
-            # Keep only wins or draws for NimsiluBot
-            if grep -qi "\[White \".*${PLAYER}.*\"" "$FILE"; then
-              if ! grep -qE "\[Result \"(1-0|1/2-1/2)\"" "$FILE"; then
-                rm "$FILE"
-                continue
-              fi
-            fi
-
-            if grep -qi "\[Black \".*${PLAYER}.*\"" "$FILE"; then
-              if ! grep -qE "\[Result \"(0-1|1/2-1/2)\"" "$FILE"; then
-                rm "$FILE"
-                continue
-              fi
-            fi
-
-            # Approximate illegal move check (drops game if contains suspicious tokens)
-            if grep -qE "(\?\?|illegal|Invalid)" "$FILE"; then
-              rm "$FILE"
-              continue
-            fi
-
-            MATCHED=$((MATCHED+1))
-          done
-
-          # Merge kept games
-          if [ $MATCHED -gt 0 ]; then
-            cat xx* > "$OUTPUT"
-            echo "✅ Saved $MATCHED games for NimsiluBot to $OUTPUT"
+          if [ -s "$OUTPUT" ]; then
+            echo "✅ Filter complete. Saved results to $OUTPUT"
           else
-            echo "⚠️ No valid games found for NimsiluBot"
+            echo "⚠️ No matching games found for $PLAYER"
             touch "$OUTPUT"
           fi
 
-          # Clean up temp files
-          rm -f xx*
-      
       - name: Commit and Push Filtered PGN
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f "FilteredGames.pgn" ]; then
             git add "FilteredGames.pgn"
-            git commit -m "Filtered PGN: Wins/Draws (No Python) for NimsiluBot" || echo "No changes to commit"
+            git commit -m "Filtered PGN: Wins/Draws for NimsiluBot (Fast pgn-extract)" || echo "No changes to commit"
             git push
-          else
-            echo "⚠️ No output PGN generated."
