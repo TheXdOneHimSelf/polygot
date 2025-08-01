@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       input_pgn:
-        description: "Enter the PGN file name (e.g., BOT_Stockfish13.pgn)"
+        description: "Enter the PGN file name"
         required: true
         default: ".pgn"
       player_name:
