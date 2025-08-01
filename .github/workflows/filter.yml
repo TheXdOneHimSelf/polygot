@@ -1,4 +1,4 @@
-name: filter 
+name: Filter PGN by Player Wins/Draws (Fixed & Sorted)
 
 on:
   workflow_dispatch:
@@ -6,11 +6,11 @@ on:
       input_pgn:
         description: "Enter the PGN file name (e.g., BOT_Stockfish13.pgn)"
         required: true
-        default: "BOT_Stockfish13.pgn"
+        default: ".pgn"
       player_name:
         description: "Enter the player's name to filter games for"
         required: true
-        default: "BOT_Stockfish13"
+        default: " "
       output_pgn:
         description: "Enter the filtered PGN output file name"
         required: true
@@ -32,18 +32,42 @@ jobs:
       - name: Install dependencies
         run: pip install python-chess
 
-      - name: Run PGN Filter
+      - name: Run PGN Filter (With Fix & Sort)
         run: |
           python - << 'EOF'
           import chess.pgn
+          from pathlib import Path
+          from datetime import datetime
 
           input_pgn = "${{ github.event.inputs.input_pgn }}"
           output_pgn = "${{ github.event.inputs.output_pgn }}"
           player_name = "${{ github.event.inputs.player_name }}".strip().lower()
 
-          count_in, count_out = 0, 0
+          input_path = Path(input_pgn)
+          if not input_path.exists():
+              raise FileNotFoundError(f"❌ Input file not found: {input_pgn}")
 
-          with open(input_pgn, encoding="utf-8") as infile, open(output_pgn, "w", encoding="utf-8") as outfile:
+          count_in, count_out, fixed_games = 0, 0, 0
+          games_list = []
+
+          def sanitize_game(game):
+              """Rebuild game move-by-move and trim illegal moves."""
+              board = game.board()
+              new_game = chess.pgn.Game()
+              new_game.headers = game.headers.copy()
+              node = new_game
+              fixed = False
+
+              for move in game.mainline_moves():
+                  if move in board.legal_moves:
+                      board.push(move)
+                      node = node.add_variation(move)
+                  else:
+                      fixed = True
+                      break
+              return new_game, fixed
+
+          with open(input_path, encoding="utf-8") as infile:
               while True:
                   game = chess.pgn.read_game(infile)
                   if game is None:
@@ -53,23 +77,46 @@ jobs:
                   white = game.headers.get("White", "").lower()
                   black = game.headers.get("Black", "").lower()
                   result = game.headers.get("Result", "")
+                  date = game.headers.get("Date", "0000.00.00")
 
-                  # Keep only games played by the player
+                  # Filter only player's games
                   if player_name not in white and player_name not in black:
                       continue
 
-                  # Keep only wins/draws for that player
-                  if player_name in white:
-                      if result not in ["1-0", "1/2-1/2"]:
-                          continue
-                  if player_name in black:
-                      if result not in ["0-1", "1/2-1/2"]:
-                          continue
+                  # Filter only wins/draws
+                  if player_name in white and result not in ["1-0", "1/2-1/2"]:
+                      continue
+                  if player_name in black and result not in ["0-1", "1/2-1/2"]:
+                      continue
 
-                  outfile.write(str(game) + "\n\n")
-                  count_out += 1
+                  # Fix illegal moves
+                  fixed_game, was_fixed = sanitize_game(game)
+                  if was_fixed:
+                      fixed_games += 1
 
-          print(f"✅ Filtered {count_out}/{count_in} games for player '{player_name}' saved to '{output_pgn}'")
+                  games_list.append((date, fixed_game))
+
+          if not games_list:
+              print(f"⚠️ No matching games found for '{player_name}' with wins/draws.")
+          else:
+              # Sort by date
+              def date_key(item):
+                  d = item[0]
+                  try:
+                      return datetime.strptime(d, "%Y.%m.%d")
+                  except:
+                      return datetime.min
+
+              games_list.sort(key=date_key)
+
+              with open(output_pgn, "w", encoding="utf-8") as outfile:
+                  for _, g in games_list:
+                      outfile.write(str(g) + "\n\n")
+                      count_out += 1
+
+          print(f"✅ Filtered {count_out}/{count_in} games for '{player_name}' saved to '{output_pgn}'")
+          if fixed_games:
+              print(f"🔧 Fixed illegal moves in {fixed_games} games.")
           EOF
 
       - name: Configure Git
@@ -81,6 +128,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git add "${{ github.event.inputs.output_pgn }}"
-          git commit -m "Filtered PGN: Wins/Draws for player ${{ github.event.inputs.player_name }}" || echo "No changes to commit"
-          git push
+          if [ -f "${{ github.event.inputs.output_pgn }}" ]; then
+            git add "${{ github.event.inputs.output_pgn }}"
+            git commit -m "Filtered PGN: Wins/Draws (Fixed & Sorted) for player ${{ github.event.inputs.player_name }}" || echo "No changes to commit"
+            git push
+          else
+            echo "⚠️ No output file to commit."
+          fi
