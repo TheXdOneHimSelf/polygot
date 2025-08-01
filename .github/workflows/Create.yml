@@ -1,28 +1,39 @@
-name: Create
+name: create
 
 on:
   workflow_dispatch:
     inputs:
-      bin_name:
-        description: "Enter the BIN book name"
+      pgn_file:
+        description: "Enter the PGN file name "
         required: true
-        default: "SF"
+        default: ".pgn"
+      bin_name:
+        description: "Enter the BIN output file name"
+        required: true
+        default: ".bin"
 
 jobs:
   convert:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Book 
-      shell: cmd
-      run: create.bat
+      - name: Run Polyglot Conversion
+        shell: cmd
+        run: |
+          polyglot.exe make-book -pgn ${{ github.event.inputs.pgn_file }} -bin ${{ github.event.inputs.bin_name }} -min-game 1
 
-    - name: Upload PGN and BIN files
-      uses: actions/upload-artifact@v4
-      with:
-        name: Book
-        path: |
-          ${{ github.event.inputs.bin_name }}.bin
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and Push BIN file
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add "${{ github.event.inputs.bin_name }}"
+          git commit -m "Update Polyglot book: ${{ github.event.inputs.bin_name }}" || echo "No changes to commit"
+          git push
