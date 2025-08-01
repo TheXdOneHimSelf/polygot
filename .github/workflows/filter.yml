@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install pgn-extract (for fast PGN processing)
+      - name: Install pgn-extract (fast PGN processing tool)
         run: |
           sudo apt-get update
           sudo apt-get install -y pgn-extract
@@ -35,13 +35,13 @@ jobs:
             exit 1
           fi
 
-          echo "⚡ Using pgn-extract to filter games for $PLAYER..."
+          echo "⚡ Filtering games for $PLAYER using pgn-extract..."
 
-          # Keep only games where NimsiluBot played AND result is win or draw
+          # Filter games where NimsiluBot played and result is win or draw
           pgn-extract "$INPUT" \
-            --player "$PLAYER" \
-            --result "1-0" --result "0-1" --result "1/2-1/2" \
-            --out "$OUTPUT" \
+            -p "$PLAYER" \
+            -r "1-0" -r "0-1" -r "1/2-1/2" \
+            -o "$OUTPUT" \
             --quiet
 
           if [ -s "$OUTPUT" ]; then
