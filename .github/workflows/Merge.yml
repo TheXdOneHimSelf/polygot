@@ -1,22 +1,43 @@
-name: Merge
+name: merge
 
 on:
-  workflow_dispatch:  
+  workflow_dispatch:
+    inputs:
+      bin_file_1:
+        description: "Enter the first BIN file"
+        required: true
+        default: ".bin"
+      bin_file_2:
+        description: "Enter the second BIN file "
+        required: true
+        default: ".bin"
+      output_bin:
+        description: "Enter the merged BIN output file name "
+        required: true
+        default: ".bin"
 
 jobs:
-  convert:
-    runs-on: windows-latest  
+  merge-books:
+    runs-on: windows-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Merge 
-      shell: cmd
-      run: merge.bat
+      - name: Run Polyglot Merge
+        shell: cmd
+        run: |
+          polyglot.exe merge-book -in1 ${{ github.event.inputs.bin_file_1 }} -in2 ${{ github.event.inputs.bin_file_2 }} -out ${{ github.event.inputs.output_bin }}
 
-    - name: Upload PGN files
-      uses: actions/upload-artifact@v4
-      with:
-        name: Book
-        path: WinForUs.bin
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and Push Merged BIN file
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add "${{ github.event.inputs.output_bin }}"
+          git commit -m "Merged Polyglot books into: ${{ github.event.inputs.output_bin }}" || echo "No changes to commit"
+          git push
