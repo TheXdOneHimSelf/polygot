@@ -1,4 +1,4 @@
-name: Fast Filter PGN by NimsiluBot Wins/Draws
+name: Fast Filter PGN by NimsiluBot Wins/Draws (Clean Games)
 
 on:
   workflow_dispatch:
@@ -19,37 +19,59 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install pgn-extract (fast PGN processing tool)
+      - name: Install pgn-extract
         run: |
           sudo apt-get update
           sudo apt-get install -y pgn-extract
 
-      - name: Filter PGN for NimsiluBot (Wins/Draws Only)
+      - name: Filter PGN for NimsiluBot (Wins/Draws & Legal Moves)
         run: |
           INPUT="${{ github.event.inputs.input_pgn }}"
           PLAYER="${{ github.event.inputs.player_name }}"
           OUTPUT="FilteredGames.pgn"
+          TEMP="temp_filtered.pgn"
 
           if [ ! -f "$INPUT" ]; then
             echo "❌ File not found: $INPUT"
             exit 1
           fi
 
-          echo "⚡ Filtering games for $PLAYER using pgn-extract..."
+          echo "⚡ Filtering games for $PLAYER (removing illegal moves) using pgn-extract..."
 
-          # Filter games where NimsiluBot played and result is win or draw
+          # Step 1: Extract games where NimsiluBot was White
           pgn-extract "$INPUT" \
-            -p "$PLAYER" \
-            -r "1-0" -r "0-1" -r "1/2-1/2" \
+            -t "White=$PLAYER" \
+            -V \
+            -o temp_white.pgn \
+            --quiet
+
+          # Step 2: Extract games where NimsiluBot was Black
+          pgn-extract "$INPUT" \
+            -t "Black=$PLAYER" \
+            -V \
+            -o temp_black.pgn \
+            --quiet
+
+          # Merge White+Black games
+          cat temp_white.pgn temp_black.pgn > "$TEMP"
+
+          # Step 3: Keep only wins or draws and validate again
+          pgn-extract "$TEMP" \
+            -r "1-0" \
+            -r "0-1" \
+            -r "1/2-1/2" \
+            -V \
             -o "$OUTPUT" \
             --quiet
 
           if [ -s "$OUTPUT" ]; then
-            echo "✅ Filter complete. Saved results to $OUTPUT"
+            echo "✅ Filter complete. Saved cleaned results to $OUTPUT"
           else
-            echo "⚠️ No matching games found for $PLAYER"
+            echo "⚠️ No valid games found for $PLAYER"
             touch "$OUTPUT"
           fi
+
+          rm -f temp_white.pgn temp_black.pgn "$TEMP"
 
       - name: Commit and Push Filtered PGN
         env:
@@ -57,5 +79,6 @@ jobs:
         run: |
           if [ -f "FilteredGames.pgn" ]; then
             git add "FilteredGames.pgn"
-            git commit -m "Filtered PGN: Wins/Draws for NimsiluBot (Fast pgn-extract)" || echo "No changes to commit"
+            git commit -m "Filtered PGN: Wins/Draws for NimsiluBot (Cleaned illegal moves)" || echo "No changes to commit"
             git push
+
