@@ -1,94 +1,104 @@
-name: Fast Filter PGN by NimsiluBot Wins/Draws (Legal Games)
+name: Auto PGN Download, Clean, Filter, and Create Book
 
 on:
   workflow_dispatch:
     inputs:
-      input_pgn:
-        description: "Enter the PGN file name (e.g., NimsiluBot.pgn)"
+      bot_name:
+        description: "Enter the Lichess bot username"
         required: true
-        default: "NimsiluBot.pgn"
-      player_name:
-        description: "Enter the player's name to filter games for"
+        default: "indianguyplayz"
+      bin_name:
+        description: "Enter the output BIN book name"
         required: true
-        default: "NimsiluBot"
+        default: "Book.bin"
 
 jobs:
-  filter:
-    runs-on: ubuntu-latest
+  process:
+    runs-on: windows-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install latest pgn-extract
+      # ---------------------------
+      # 1️⃣ Download PGN from Lichess
+      # ---------------------------
+      - name: Calculate “since” timestamp (1 Mar 2025 00:00 UTC)
+        id: time
+        shell: bash
+        run: |
+          SINCE=$(date -d "2025-03-01 00:00:00 UTC" +%s)000
+          echo "since=$SINCE" >> "$GITHUB_OUTPUT"
+
+      - name: Download PGN
+        shell: bash
+        run: |
+          FILE="${{ github.event.inputs.bot_name }}.pgn"
+          curl -L "https://lichess.org/api/games/user/${{ github.event.inputs.bot_name }}" \
+            -G \
+            --data-urlencode "since=${{ steps.time.outputs.since }}" \
+            -H "Accept: application/x-chess-pgn" \
+            -o "$FILE"
+
+      # ---------------------------
+      # 2️⃣ Install PGN-Extract
+      # ---------------------------
+      - name: Install pgn-extract
+        shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential wget unzip
-          wget https://www.cs.kent.ac.uk/people/staff/djb/pgn-extract/pgn-extract-21-10.zip -O pgn.zip
-          unzip pgn.zip
-          cd pgn-extract-21-10/src
-          make
-          sudo cp pgn-extract /usr/local/bin/
-          cd ../..
+          sudo apt-get install -y make g++
+          wget https://www.cs.kent.ac.uk/people/staff/djb/pgn-extract/pgn-extract-21-10.zip
+          unzip pgn-extract-21-10.zip
+          cd pgn-extract-21-10 && make && sudo cp pgn-extract /usr/local/bin
 
-      - name: Filter PGN for NimsiluBot (Legal Games Only)
+      # ---------------------------
+      # 3️⃣ Remove games with illegal moves
+      # ---------------------------
+      - name: Clean illegal games
+        shell: bash
         run: |
-          INPUT="${{ github.event.inputs.input_pgn }}"
-          PLAYER="${{ github.event.inputs.player_name }}"
-          OUTPUT="FilteredGames.pgn"
+          INPUT="${{ github.event.inputs.bot_name }}.pgn"
+          OUTPUT="cleaned_${{ github.event.inputs.bot_name }}.pgn"
+          pgn-extract -# -o "$OUTPUT" "$INPUT"
+          mv "$OUTPUT" "$INPUT"
 
-          if [ ! -f "$INPUT" ]; then
-            echo "❌ File not found: $INPUT"
-            exit 1
-          fi
+      # ---------------------------
+      # 4️⃣ Filter only Wins and Draws for this bot
+      # ---------------------------
+      - name: Filter wins/draws for bot
+        shell: bash
+        run: |
+          INPUT="${{ github.event.inputs.bot_name }}.pgn"
+          OUTPUT="filtered_${{ github.event.inputs.bot_name }}.pgn"
+          pgn-extract -# \
+            --white "${{ github.event.inputs.bot_name }}" --result "1-0" \
+            --black "${{ github.event.inputs.bot_name }}" --result "0-1" \
+            --result "1/2-1/2" \
+            -o "$OUTPUT" "$INPUT"
+          mv "$OUTPUT" "$INPUT"
 
-          echo "⚡ Filtering valid games for $PLAYER (wins/draws only)..."
+      # ---------------------------
+      # 5️⃣ Convert PGN to BIN book (Polyglot)
+      # ---------------------------
+      - name: Run Polyglot Conversion
+        shell: cmd
+        run: |
+          polyglot.exe make-book -pgn "${{ github.event.inputs.bot_name }}.pgn" -bin "${{ github.event.inputs.bin_name }}" -min-game 1
+          echo Book created successfully!
 
-          # Create tagfiles for White and Black filters
-          echo "White=$PLAYER" > white_tags.txt
-          echo "Black=$PLAYER" > black_tags.txt
+      # ---------------------------
+      # 6️⃣ Commit results back to repo
+      # ---------------------------
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Extract White games, validate moves
-          /usr/local/bin/pgn-extract "$INPUT" \
-            -t white_tags.txt \
-            -V \
-            -o temp_white.pgn \
-            --quiet || true
-
-          # Extract Black games, validate moves
-          /usr/local/bin/pgn-extract "$INPUT" \
-            -t black_tags.txt \
-            -V \
-            -o temp_black.pgn \
-            --quiet || true
-
-          # Merge White and Black games
-          cat temp_white.pgn temp_black.pgn > temp_all.pgn
-
-          # Filter for wins/draws only
-          /usr/local/bin/pgn-extract temp_all.pgn \
-            -r "1-0" \
-            -r "0-1" \
-            -r "1/2-1/2" \
-            -V \
-            -o "$OUTPUT" \
-            --quiet || true
-
-          if [ -s "$OUTPUT" ]; then
-            echo "✅ Successfully saved cleaned filtered PGN to $OUTPUT"
-          else
-            echo "⚠️ No valid wins/draws found for $PLAYER"
-            touch "$OUTPUT"
-          fi
-
-          rm -f temp_white.pgn temp_black.pgn temp_all.pgn white_tags.txt black_tags.txt
-
-      - name: Commit and Push Filtered PGN
+      - name: Commit and Push Files
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -f "FilteredGames.pgn" ]; then
-            git add "FilteredGames.pgn"
-            git commit -m "Filtered PGN: Wins/Draws for NimsiluBot (Clean & Legal)" || echo "No changes to commit"
-            git push
-
-
+          git add "${{ github.event.inputs.bot_name }}.pgn" "${{ github.event.inputs.bin_name }}"
+          git commit -m "Auto processed PGN and book for ${{ github.event.inputs.bot_name }}" || echo "No changes to commit"
+          git push
