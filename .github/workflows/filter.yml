@@ -1,0 +1,86 @@
+name: Filter PGN by Player Wins/Draws
+
+on:
+  workflow_dispatch:
+    inputs:
+      input_pgn:
+        description: "Enter the PGN file name (e.g., BOT_Stockfish13.pgn)"
+        required: true
+        default: "BOT_Stockfish13.pgn"
+      player_name:
+        description: "Enter the player's name to filter games for"
+        required: true
+        default: "BOT_Stockfish13"
+      output_pgn:
+        description: "Enter the filtered PGN output file name"
+        required: true
+        default: "FilteredGames.pgn"
+
+jobs:
+  filter:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install python-chess
+
+      - name: Run PGN Filter
+        run: |
+          python - << 'EOF'
+          import chess.pgn
+
+          input_pgn = "${{ github.event.inputs.input_pgn }}"
+          output_pgn = "${{ github.event.inputs.output_pgn }}"
+          player_name = "${{ github.event.inputs.player_name }}".strip().lower()
+
+          count_in, count_out = 0, 0
+
+          with open(input_pgn, encoding="utf-8") as infile, open(output_pgn, "w", encoding="utf-8") as outfile:
+              while True:
+                  game = chess.pgn.read_game(infile)
+                  if game is None:
+                      break
+                  count_in += 1
+
+                  white = game.headers.get("White", "").lower()
+                  black = game.headers.get("Black", "").lower()
+                  result = game.headers.get("Result", "")
+
+                  # Keep only games played by the player
+                  if player_name not in white and player_name not in black:
+                      continue
+
+                  # Keep only wins/draws for that player
+                  if player_name in white:
+                      if result not in ["1-0", "1/2-1/2"]:
+                          continue
+                  if player_name in black:
+                      if result not in ["0-1", "1/2-1/2"]:
+                          continue
+
+                  outfile.write(str(game) + "\n\n")
+                  count_out += 1
+
+          print(f"✅ Filtered {count_out}/{count_in} games for player '{player_name}' saved to '{output_pgn}'")
+          EOF
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and Push Filtered PGN
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add "${{ github.event.inputs.output_pgn }}"
+          git commit -m "Filtered PGN: Wins/Draws for player ${{ github.event.inputs.player_name }}" || echo "No changes to commit"
+          git push
