@@ -14,7 +14,7 @@ on:
       min_elo:
         description: "Minimum opponent rating"
         required: true
-        default: "2000"
+        default: "3000"
       output_pgn:
         description: "Filtered PGN output file name"
         required: true
